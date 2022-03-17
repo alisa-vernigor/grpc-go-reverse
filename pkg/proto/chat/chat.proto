@@ -1,0 +1,17 @@
+syntax = "proto3";
+option go_package = "github.com/alisa-vernigor/grpc-go-reverse/pkg/proto/chat";
+
+
+package chat;
+
+service ChatRoom {
+    rpc Chat (stream ChatRequest) returns (stream ChatResponse) {}
+}
+
+message ChatRequest {
+    string name = 1;
+}
+
+message ChatResponse {
+    string name = 1;
+}
