@@ -39,8 +39,8 @@ func (c *chatRoomClient) Chat(ctx context.Context, opts ...grpc.CallOption) (Cha
 }
 
 type ChatRoom_ChatClient interface {
-	Send(*ChatRequest) error
-	Recv() (*ChatResponse, error)
+	Send(*ClientMessage) error
+	Recv() (*ServerMessage, error)
 	grpc.ClientStream
 }
 
@@ -48,12 +48,12 @@ type chatRoomChatClient struct {
 	grpc.ClientStream
 }
 
-func (x *chatRoomChatClient) Send(m *ChatRequest) error {
+func (x *chatRoomChatClient) Send(m *ClientMessage) error {
 	return x.ClientStream.SendMsg(m)
 }
 
-func (x *chatRoomChatClient) Recv() (*ChatResponse, error) {
-	m := new(ChatResponse)
+func (x *chatRoomChatClient) Recv() (*ServerMessage, error) {
+	m := new(ServerMessage)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -93,8 +93,8 @@ func _ChatRoom_Chat_Handler(srv interface{}, stream grpc.ServerStream) error {
 }
 
 type ChatRoom_ChatServer interface {
-	Send(*ChatResponse) error
-	Recv() (*ChatRequest, error)
+	Send(*ServerMessage) error
+	Recv() (*ClientMessage, error)
 	grpc.ServerStream
 }
 
@@ -102,12 +102,12 @@ type chatRoomChatServer struct {
 	grpc.ServerStream
 }
 
-func (x *chatRoomChatServer) Send(m *ChatResponse) error {
+func (x *chatRoomChatServer) Send(m *ServerMessage) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-func (x *chatRoomChatServer) Recv() (*ChatRequest, error) {
-	m := new(ChatRequest)
+func (x *chatRoomChatServer) Recv() (*ClientMessage, error) {
+	m := new(ClientMessage)
 	if err := x.ServerStream.RecvMsg(m); err != nil {
 		return nil, err
 	}

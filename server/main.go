@@ -5,7 +5,6 @@ import (
 	"io"
 	"log"
 	"net"
-	"os"
 	"sync"
 
 	"github.com/alisa-vernigor/grpc-go-reverse/pkg/proto/chat"
@@ -25,17 +24,11 @@ type server struct {
 	mu                 sync.RWMutex
 }
 
-func (s *server) addClient(nick string, stream *chat.ChatRoom_ChatServer) {
+func (s *server) addClient(nick string, stream chat.ChatRoom_ChatServer) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	fmt.Print("here44")
-	for _, ss := range s.clients_to_streams {
-		if err := ss.Send(&chat.ChatResponse{Name: nick}); err != nil {
-			log.Printf("broadcast err: %v", err)
-		}
-	}
-	s.clients_to_streams[nick] = *stream
-	s.streams_to_clients[*stream] = nick
+	s.clients_to_streams[nick] = stream
+	s.streams_to_clients[stream] = nick
 }
 
 func (s *server) removeClient(stream chat.ChatRoom_ChatServer) {
@@ -56,44 +49,50 @@ func (s *server) getClients() []chat.ChatRoom_ChatServer {
 	return cs
 }
 
-func (s *server) handle_request(stream *chat.ChatRoom_ChatServer, req *chat.ChatRequest) {
-	s.addClient(req.GetName(), stream)
-}
+func (s *server) handle_request(stream chat.ChatRoom_ChatServer, req *chat.ClientMessage) {
+	if req.Type == chat.ClientMessageType_CONNECT {
+		for _, ss := range s.clients_to_streams {
+			if err := ss.SendMsg(&chat.ServerMessage{Type: chat.ServerMessageType_CONNECTED, Nickname: req.Nickname}); err != nil {
+				log.Printf("broadcast err: %v", err)
+			}
 
-func (s *server) Chat(stream chat.ChatRoom_ChatServer) error {
-	defer func() {
-		if err := recover(); err != nil {
-			log.Printf("panic: %v", err)
-			os.Exit(1)
+			if err := stream.SendMsg(&chat.ServerMessage{Type: chat.ServerMessageType_CONNECTED, Nickname: s.streams_to_clients[ss]}); err != nil {
+				log.Printf("broadcast err: %v", err)
+			}
 		}
-	}()
 
-	go func() {
-		for {
-			in, err := stream.Recv()
-
-			if err == io.EOF {
-				s.removeClient(stream)
-				return
-			}
-
-			if err != nil {
-				log.Fatalf("Failed to receive a message : %v", err)
-			}
-
-			s.mu.Lock()
-			defer s.mu.Unlock()
-			fmt.Print("here44")
-			for _, ss := range s.clients_to_streams {
-				if err := ss.Send(&chat.ChatResponse{Name: in.Name}); err != nil {
+		s.addClient(req.Nickname, stream)
+		stream.SendMsg(&chat.ServerMessage{Type: chat.ServerMessageType_CONNECTED, Nickname: req.Nickname})
+	} else if req.Type == chat.ClientMessageType_MESSAGE_TO_CHAT {
+		for _, ss := range s.clients_to_streams {
+			if ss != stream {
+				if err := ss.SendMsg(&chat.ServerMessage{Type: chat.ServerMessageType_MESSAGE_FROM_CHAT, Nickname: s.streams_to_clients[stream], Body: req.Body}); err != nil {
 					log.Printf("broadcast err: %v", err)
 				}
 			}
-			s.clients_to_streams[in.Name] = stream
-			s.streams_to_clients[stream] = in.Name
 		}
-	}()
-	return nil
+	}
+}
+
+func (s *server) Chat(stream chat.ChatRoom_ChatServer) error {
+	for {
+		var in chat.ClientMessage
+		err := stream.RecvMsg(&in)
+
+		if err == io.EOF {
+			s.removeClient(stream)
+			return nil
+		}
+
+		if err != nil {
+			s.removeClient(stream)
+			return nil
+		}
+
+		fmt.Println("Got message: ", in.Type.String())
+
+		s.handle_request(stream, &in)
+	}
 }
 
 func main() {

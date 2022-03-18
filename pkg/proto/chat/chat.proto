@@ -5,13 +5,41 @@ option go_package = "github.com/alisa-vernigor/grpc-go-reverse/pkg/proto/chat";
 package chat;
 
 service ChatRoom {
-    rpc Chat (stream ChatRequest) returns (stream ChatResponse) {}
+    rpc Chat (stream ClientMessage) returns (stream ServerMessage) {}
 }
 
-message ChatRequest {
-    string name = 1;
+message ClientMessage {
+    ClientMessageType type = 1;
+    string body = 2;
+    string nickname = 3;
+    string role = 4;
 }
 
-message ChatResponse {
-    string name = 1;
+message ServerMessage {
+    ServerMessageType type = 1;
+    string body = 2;
+    string nickname = 3;
+    string role = 4;
+}
+
+enum ClientMessageType {
+    CONNECT = 0;
+    DISCONNECT = 1;
+    FINISH_THE_DAY = 2;
+    MESSAGE_TO_CHAT = 3;
+    VOTE_FOR = 4;
+}
+
+enum ServerMessageType {
+    CONNECTED = 0;
+    DISCONNECTED = 1;
+    GAME_STARTED = 2;
+    ROLE = 3;
+    GAME_FINISHED = 4;
+    DAY = 5;
+    NIGHT = 6;
+    MESSAGE_FROM_CHAT = 7;
+    KILLED = 8;
+    DRAW = 9;
+    DENIED = 10;
 }
