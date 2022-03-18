@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"log"
 
 	"github.com/alisa-vernigor/grpc-go-reverse/pkg/proto/chat"
@@ -22,31 +23,36 @@ func main() {
 	// Taking input from user
 	fmt.Scanln(&clientName)
 
-	ctx := context.Background()
-
-	stream, err := c.Chat(ctx)
+	stream, err := c.Chat(context.Background())
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	var f bool = false
+	waitc := make(chan struct{})
+
 	go func() {
 		for {
-			mes := clientName
-			if !f {
-				if err := stream.SendMsg(&chat.ChatRequest{Name: mes}); err != nil {
-					log.Fatal(err)
-				}
-				f = true
+			in, err := stream.Recv()
+			if err == io.EOF {
+				// read done.
+				print("EOF")
+				close(waitc)
+				return
 			}
+			if err != nil {
+				log.Fatalf("Failed to receive a message : %v", err)
+			}
+			log.Printf("Got message: %s", in.Name)
 		}
 	}()
 
 	for {
-		resp, err := stream.Recv()
-		if err != nil {
-			log.Fatal(err)
+		if !f {
+			if err := stream.Send(&chat.ChatRequest{Name: clientName}); err != nil {
+				log.Fatal(err)
+			}
+			f = true
 		}
-		log.Printf("recv: %s", resp.Name)
 	}
 }

@@ -25,7 +25,7 @@ type server struct {
 	mu                 sync.RWMutex
 }
 
-func (s *server) addClient(nick string, stream chat.ChatRoom_ChatServer) {
+func (s *server) addClient(nick string, stream *chat.ChatRoom_ChatServer) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	fmt.Print("here44")
@@ -34,11 +34,8 @@ func (s *server) addClient(nick string, stream chat.ChatRoom_ChatServer) {
 			log.Printf("broadcast err: %v", err)
 		}
 	}
-	fmt.Print("here55")
-	s.clients_to_streams[nick] = stream
-	fmt.Print("here66")
-	s.streams_to_clients[stream] = nick
-	fmt.Print("here77")
+	s.clients_to_streams[nick] = *stream
+	s.streams_to_clients[*stream] = nick
 }
 
 func (s *server) removeClient(stream chat.ChatRoom_ChatServer) {
@@ -59,7 +56,7 @@ func (s *server) getClients() []chat.ChatRoom_ChatServer {
 	return cs
 }
 
-func (s *server) handle_request(stream chat.ChatRoom_ChatServer, req *chat.ChatRequest) {
+func (s *server) handle_request(stream *chat.ChatRoom_ChatServer, req *chat.ChatRequest) {
 	s.addClient(req.GetName(), stream)
 }
 
@@ -71,24 +68,29 @@ func (s *server) Chat(stream chat.ChatRoom_ChatServer) error {
 		}
 	}()
 
-	waitc := make(chan struct{})
 	go func() {
 		for {
-			fmt.Print("here1")
 			in, err := stream.Recv()
-			fmt.Print("here2")
+
 			if err == io.EOF {
-				// read done.
-				close(waitc)
 				s.removeClient(stream)
 				return
 			}
+
 			if err != nil {
 				log.Fatalf("Failed to receive a message : %v", err)
 			}
-			fmt.Print("here3")
-			s.handle_request(stream, in)
-			fmt.Print("here4")
+
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			fmt.Print("here44")
+			for _, ss := range s.clients_to_streams {
+				if err := ss.Send(&chat.ChatResponse{Name: in.Name}); err != nil {
+					log.Printf("broadcast err: %v", err)
+				}
+			}
+			s.clients_to_streams[in.Name] = stream
+			s.streams_to_clients[stream] = in.Name
 		}
 	}()
 	return nil
