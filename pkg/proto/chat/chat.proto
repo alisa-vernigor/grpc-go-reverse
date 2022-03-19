@@ -20,6 +20,7 @@ message ServerMessage {
     string body = 2;
     string nickname = 3;
     string role = 4;
+    int64 day = 5;
 }
 
 enum ClientMessageType {
@@ -28,6 +29,7 @@ enum ClientMessageType {
     FINISH_THE_DAY = 2;
     MESSAGE_TO_CHAT = 3;
     VOTE_FOR = 4;
+    PUBLIC = 5;
 }
 
 enum ServerMessageType {
@@ -42,4 +44,7 @@ enum ServerMessageType {
     KILLED = 8;
     DRAW = 9;
     DENIED = 10;
+    VOTED_OUT = 11;
+    PUBLIC_FROM_COM = 12;
+    OK = 13;
 }
