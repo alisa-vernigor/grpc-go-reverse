@@ -64,7 +64,7 @@ func (c *client) server_handler(to_sender chan *chat.ClientMessage, stream chat.
 			fmt.Println("It's a new day, day", int64(in.Day))
 			c.daytime = "Day"
 		} else if in.Type == chat.ServerMessageType_NIGHT {
-			fmt.Println("It's a night time, night", int64(in.Day))
+			fmt.Println("It's a night time, com and mafia are able to do their work now, night", int64(in.Day))
 			c.daytime = "Night"
 		} else if in.Type == chat.ServerMessageType_VOTED_OUT {
 			if in.Nickname == c.nickname {
@@ -274,7 +274,7 @@ func main() {
 		addr = strings.Replace(addr, "\n", "", -1)
 		conn, err = grpc.Dial(addr, grpc.WithInsecure())
 		if err != nil {
-			log.Fatalf("did not connect: %v", err)
+			fmt.Println("Wrong adress, try again")
 		}
 		break
 	}
